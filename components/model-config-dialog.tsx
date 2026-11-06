@@ -22,6 +22,7 @@ import {
     type SecretField,
 } from "@/components/provider-credentials-fields"
 import { ProviderLogo } from "@/components/provider-logo"
+import { AzureCliSetup } from "@/components/settings/azure-cli-setup"
 import { ProviderPicker } from "@/components/settings/provider-picker"
 import { ProvidersList } from "@/components/settings/providers-list"
 import { SettingsHeader } from "@/components/settings/settings-header"
@@ -1177,411 +1178,439 @@ export function ModelConfigDialog({
                 </SettingsHeader>
                 <ScrollArea className="min-h-0 flex-1">
                     <div className="space-y-7 px-6 pt-1 pb-6">
-                        {/* 1: credentials */}
-                        <Step
-                            n={1}
-                            done={credentialsDone && !keyRejected}
-                            title={t.stepConnect}
+                        <AzureCliSetup
+                            key={provider.id}
+                            active={provider.provider === "azure"}
+                            disabled={chatLocked}
+                            onUseModel={(id) => {
+                                modelConfig.setSelectedModelId(id)
+                                useUiStore.getState().setSettingsOpen(false)
+                            }}
                         >
-                            {def.credential === "none" ? (
-                                <p className="text-xs text-muted-foreground">
-                                    {t.edgeoneNoKey}
-                                </p>
-                            ) : (
-                                <ProviderCredentialsFields
-                                    // Its folded options and Bedrock choice
-                                    // belong to this provider
-                                    key={provider.id}
-                                    provider={provider.provider}
-                                    name={provider.name}
-                                    baseUrl={provider.baseUrl}
-                                    awsRegion={provider.awsRegion}
-                                    settingsLayout
-                                    bedrockFilled={{
-                                        apiKey: !!provider.apiKey,
-                                        accessKey:
-                                            !!provider.awsAccessKeyId ||
-                                            !!provider.awsSecretAccessKey,
-                                    }}
-                                    clearSecrets={clearSecrets}
-                                    sessionTokenInput={renderProviderSecret(
-                                        "awsSessionToken",
-                                        "aws-session-token",
-                                    )}
-                                    onChange={(field, value) =>
-                                        handleProviderUpdate({
-                                            [field]: value,
-                                        })
-                                    }
-                                    renderSecret={({ field, id }) =>
-                                        renderProviderSecret(field, id)
-                                    }
-                                />
-                            )}
-                            {/* Saved on every change: no button to press */}
-                            {(provider.apiKey ||
-                                provider.awsAccessKeyId ||
-                                provider.awsSecretAccessKey ||
-                                provider.vertexApiKey) && (
-                                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                    <Lock className="size-3.5 shrink-0" />
-                                    {t.savedInBrowser}
-                                </p>
-                            )}
-                        </Step>
-
-                        {/* 2: models */}
-                        <Step
-                            n={2}
-                            done={models.length > 0}
-                            title={t.stepModels}
-                            action={
-                                def.modelList && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleFetchModels()}
-                                        disabled={fetchingFor.includes(
-                                            provider.id,
-                                        )}
-                                        title={fetchLabel}
-                                        className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
-                                    >
-                                        {fetchingFor.includes(provider.id) ? (
-                                            <Loader2 className="size-3 shrink-0 animate-spin" />
-                                        ) : (
-                                            <RefreshCw className="size-3 shrink-0" />
-                                        )}
-                                        <span className="truncate">
-                                            {fetchLabel}
-                                        </span>
-                                    </button>
-                                )
-                            }
-                        >
-                            {fetchModelsError && (
-                                <p className="text-xs text-destructive">
-                                    {fetchModelsError}
-                                </p>
-                            )}
-                            {models.length > 0 && (
-                                <div className="overflow-hidden rounded-xl border border-border divide-y divide-border-subtle">
-                                    {models.map(renderModelRow)}
-                                </div>
-                            )}
-                            {quickSuggestions.length > 0 && (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <span className="text-xs text-muted-foreground">
-                                        {t.suggestedLabel}
-                                    </span>
-                                    {quickSuggestions.map((modelId) => (
-                                        <Button
-                                            key={modelId}
-                                            type="button"
-                                            variant="outline"
-                                            size="sm"
-                                            className="h-7 max-w-[260px] rounded-lg px-2 font-mono text-[11px]"
-                                            title={modelId}
-                                            onClick={() =>
-                                                handleAddModel(modelId)
-                                            }
-                                        >
-                                            <Plus className="h-3 w-3 shrink-0" />
-                                            <span className="truncate">
-                                                {modelId}
-                                            </span>
-                                        </Button>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="flex items-start gap-2">
-                                <div className="min-w-0 flex-1">
-                                    <Input
-                                        placeholder={t.orTypeModelId}
-                                        aria-label={t.customModelId}
-                                        value={customModelInput}
-                                        onChange={(e) => {
-                                            setCustomModelInput(e.target.value)
-                                            if (duplicateError) {
-                                                setDuplicateError("")
-                                            }
+                            {/* 1: credentials */}
+                            <Step
+                                n={1}
+                                done={credentialsDone && !keyRejected}
+                                title={t.stepConnect}
+                            >
+                                {def.credential === "none" ? (
+                                    <p className="text-xs text-muted-foreground">
+                                        {t.edgeoneNoKey}
+                                    </p>
+                                ) : (
+                                    <ProviderCredentialsFields
+                                        // Its folded options and Bedrock choice
+                                        // belong to this provider
+                                        key={provider.id}
+                                        provider={provider.provider}
+                                        name={provider.name}
+                                        baseUrl={provider.baseUrl}
+                                        awsRegion={provider.awsRegion}
+                                        settingsLayout
+                                        bedrockFilled={{
+                                            apiKey: !!provider.apiKey,
+                                            accessKey:
+                                                !!provider.awsAccessKeyId ||
+                                                !!provider.awsSecretAccessKey,
                                         }}
-                                        onKeyDown={(e) => {
-                                            // Enter that confirms an IME
-                                            // candidate adds nothing
-                                            if (
-                                                e.nativeEvent.isComposing ||
-                                                e.keyCode === 229
-                                            ) {
-                                                return
-                                            }
-                                            if (e.key === "Enter") {
-                                                addCustomModel()
-                                            }
-                                        }}
-                                        className={cn(
-                                            "h-8 rounded-lg font-mono text-xs",
-                                            duplicateError &&
-                                                "border-destructive focus-visible:ring-destructive",
+                                        clearSecrets={clearSecrets}
+                                        sessionTokenInput={renderProviderSecret(
+                                            "awsSessionToken",
+                                            "aws-session-token",
                                         )}
+                                        onChange={(field, value) =>
+                                            handleProviderUpdate({
+                                                [field]: value,
+                                            })
+                                        }
+                                        renderSecret={({ field, id }) =>
+                                            renderProviderSecret(field, id)
+                                        }
                                     />
-                                    {duplicateError && (
-                                        <p className="mt-1 text-[11px] text-destructive">
-                                            {duplicateError}
-                                        </p>
-                                    )}
-                                </div>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 rounded-lg"
-                                    onClick={addCustomModel}
-                                    disabled={!customModelInput.trim()}
-                                >
-                                    {t.add}
-                                </Button>
-                                {/* Nothing to browse for a provider without
+                                )}
+                                {/* Saved on every change: no button to press */}
+                                {(provider.apiKey ||
+                                    provider.awsAccessKeyId ||
+                                    provider.awsSecretAccessKey ||
+                                    provider.vertexApiKey) && (
+                                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                        <Lock className="size-3.5 shrink-0" />
+                                        {t.savedInBrowser}
+                                    </p>
+                                )}
+                            </Step>
+
+                            {/* 2: models */}
+                            <Step
+                                n={2}
+                                done={models.length > 0}
+                                title={t.stepModels}
+                                action={
+                                    def.modelList && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleFetchModels()}
+                                            disabled={fetchingFor.includes(
+                                                provider.id,
+                                            )}
+                                            title={fetchLabel}
+                                            className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
+                                        >
+                                            {fetchingFor.includes(
+                                                provider.id,
+                                            ) ? (
+                                                <Loader2 className="size-3 shrink-0 animate-spin" />
+                                            ) : (
+                                                <RefreshCw className="size-3 shrink-0" />
+                                            )}
+                                            <span className="truncate">
+                                                {fetchLabel}
+                                            </span>
+                                        </button>
+                                    )
+                                }
+                            >
+                                {fetchModelsError && (
+                                    <p className="text-xs text-destructive">
+                                        {fetchModelsError}
+                                    </p>
+                                )}
+                                {models.length > 0 && (
+                                    <div className="overflow-hidden rounded-xl border border-border divide-y divide-border-subtle">
+                                        {models.map(renderModelRow)}
+                                    </div>
+                                )}
+                                {quickSuggestions.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs text-muted-foreground">
+                                            {t.suggestedLabel}
+                                        </span>
+                                        {quickSuggestions.map((modelId) => (
+                                            <Button
+                                                key={modelId}
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-7 max-w-[260px] rounded-lg px-2 font-mono text-[11px]"
+                                                title={modelId}
+                                                onClick={() =>
+                                                    handleAddModel(modelId)
+                                                }
+                                            >
+                                                <Plus className="h-3 w-3 shrink-0" />
+                                                <span className="truncate">
+                                                    {modelId}
+                                                </span>
+                                            </Button>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex items-start gap-2">
+                                    <div className="min-w-0 flex-1">
+                                        <Input
+                                            placeholder={t.orTypeModelId}
+                                            aria-label={t.customModelId}
+                                            value={customModelInput}
+                                            onChange={(e) => {
+                                                setCustomModelInput(
+                                                    e.target.value,
+                                                )
+                                                if (duplicateError) {
+                                                    setDuplicateError("")
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                // Enter that confirms an IME
+                                                // candidate adds nothing
+                                                if (
+                                                    e.nativeEvent.isComposing ||
+                                                    e.keyCode === 229
+                                                ) {
+                                                    return
+                                                }
+                                                if (e.key === "Enter") {
+                                                    addCustomModel()
+                                                }
+                                            }}
+                                            className={cn(
+                                                "h-8 rounded-lg font-mono text-xs",
+                                                duplicateError &&
+                                                    "border-destructive focus-visible:ring-destructive",
+                                            )}
+                                        />
+                                        {duplicateError && (
+                                            <p className="mt-1 text-[11px] text-destructive">
+                                                {duplicateError}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 rounded-lg"
+                                        onClick={addCustomModel}
+                                        disabled={!customModelInput.trim()}
+                                    >
+                                        {t.add}
+                                    </Button>
+                                    {/* Nothing to browse for a provider without
                                     suggested models, until its list is fetched.
                                     modal: the dialog blocks the wheel outside
                                     itself, and the list is rendered outside it */}
-                                {suggestedModels.length > 0 && (
-                                    <Popover
-                                        modal
-                                        open={modelPickerOpen}
-                                        onOpenChange={setModelPickerOpen}
-                                    >
-                                        <PopoverTrigger asChild>
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-8 rounded-lg text-xs"
-                                                disabled={
-                                                    availableSuggestions.length ===
-                                                    0
-                                                }
-                                            >
-                                                {availableSuggestions.length ===
-                                                0
-                                                    ? t.allAdded
-                                                    : t.browseModels}
-                                            </Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent
-                                            className="w-80 p-0"
-                                            align="end"
+                                    {suggestedModels.length > 0 && (
+                                        <Popover
+                                            modal
+                                            open={modelPickerOpen}
+                                            onOpenChange={setModelPickerOpen}
                                         >
-                                            <Command>
-                                                <CommandInput
-                                                    placeholder={t.searchModels}
-                                                />
-                                                {fromCatalog && (
-                                                    <p className="border-b px-3 py-2 text-xs text-muted-foreground">
-                                                        {formatMessage(
-                                                            t.catalogModelsNote,
-                                                            {
-                                                                name: providerName(
-                                                                    provider,
-                                                                ),
-                                                            },
-                                                        )}
-                                                    </p>
-                                                )}
-                                                <CommandList
-                                                    className="max-h-72"
-                                                    label={t.models}
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-8 rounded-lg text-xs"
+                                                    disabled={
+                                                        availableSuggestions.length ===
+                                                        0
+                                                    }
                                                 >
-                                                    <CommandEmpty>
-                                                        {t.noModelsFound}
-                                                    </CommandEmpty>
-                                                    {availableSuggestions.map(
-                                                        (model) => (
-                                                            <CommandItem
-                                                                key={model.id}
-                                                                value={model.id}
-                                                                onSelect={() => {
-                                                                    handleAddModel(
-                                                                        model.id,
-                                                                    )
-                                                                    setModelPickerOpen(
-                                                                        false,
-                                                                    )
-                                                                }}
-                                                                className="font-mono text-xs"
-                                                            >
-                                                                <span className="truncate">
-                                                                    {model.id}
-                                                                </span>
-                                                                {supportsTools(
-                                                                    model,
-                                                                ) === false ? (
-                                                                    <span className="ml-auto shrink-0 font-sans text-[10px] text-amber-600 dark:text-amber-400">
+                                                    {availableSuggestions.length ===
+                                                    0
+                                                        ? t.allAdded
+                                                        : t.browseModels}
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent
+                                                className="w-80 p-0"
+                                                align="end"
+                                            >
+                                                <Command>
+                                                    <CommandInput
+                                                        placeholder={
+                                                            t.searchModels
+                                                        }
+                                                    />
+                                                    {fromCatalog && (
+                                                        <p className="border-b px-3 py-2 text-xs text-muted-foreground">
+                                                            {formatMessage(
+                                                                t.catalogModelsNote,
+                                                                {
+                                                                    name: providerName(
+                                                                        provider,
+                                                                    ),
+                                                                },
+                                                            )}
+                                                        </p>
+                                                    )}
+                                                    <CommandList
+                                                        className="max-h-72"
+                                                        label={t.models}
+                                                    >
+                                                        <CommandEmpty>
+                                                            {t.noModelsFound}
+                                                        </CommandEmpty>
+                                                        {availableSuggestions.map(
+                                                            (model) => (
+                                                                <CommandItem
+                                                                    key={
+                                                                        model.id
+                                                                    }
+                                                                    value={
+                                                                        model.id
+                                                                    }
+                                                                    onSelect={() => {
+                                                                        handleAddModel(
+                                                                            model.id,
+                                                                        )
+                                                                        setModelPickerOpen(
+                                                                            false,
+                                                                        )
+                                                                    }}
+                                                                    className="font-mono text-xs"
+                                                                >
+                                                                    <span className="truncate">
                                                                         {
-                                                                            t.noTools
+                                                                            model.id
                                                                         }
                                                                     </span>
-                                                                ) : (
-                                                                    readsImages(
-                                                                        model.id,
+                                                                    {supportsTools(
+                                                                        model,
                                                                     ) ===
-                                                                        false && (
-                                                                        <span className="ml-auto shrink-0 font-sans text-[10px] text-muted-foreground">
+                                                                    false ? (
+                                                                        <span className="ml-auto shrink-0 font-sans text-[10px] text-amber-600 dark:text-amber-400">
                                                                             {
-                                                                                t.noImages
+                                                                                t.noTools
                                                                             }
                                                                         </span>
-                                                                    )
-                                                                )}
-                                                            </CommandItem>
-                                                        ),
-                                                    )}
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                )}
-                            </div>
-                        </Step>
+                                                                    ) : (
+                                                                        readsImages(
+                                                                            model.id,
+                                                                        ) ===
+                                                                            false && (
+                                                                            <span className="ml-auto shrink-0 font-sans text-[10px] text-muted-foreground">
+                                                                                {
+                                                                                    t.noImages
+                                                                                }
+                                                                            </span>
+                                                                        )
+                                                                    )}
+                                                                </CommandItem>
+                                                            ),
+                                                        )}
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+                                    )}
+                                </div>
+                            </Step>
 
-                        {/* 3: test */}
-                        <Step n={3} done={allWork} title={t.stepTest}>
-                            {/* Always on the page, so a screen reader reads
+                            {/* 3: test */}
+                            <Step n={3} done={allWork} title={t.stepTest}>
+                                {/* Always on the page, so a screen reader reads
                                 out the result when it arrives */}
-                            <p
-                                id={resultId}
-                                role="status"
-                                className="sr-only"
-                                data-testid="test-result"
-                            >
-                                {testPassed
-                                    ? passedText
-                                    : testFailed
-                                      ? validationError
-                                      : ""}
-                            </p>
-                            {testPassed ? (
-                                <div className="space-y-3 rounded-xl border border-success/20 bg-success-muted/70 px-4 py-3.5">
-                                    <p className="flex items-start gap-2 text-[13px] font-medium text-success">
-                                        <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-                                        {/* A long model id wraps */}
-                                        <span className="min-w-0 [overflow-wrap:anywhere]">
-                                            {passedText}
-                                            {lastSeconds && (
-                                                <span className="ml-2 text-xs font-normal opacity-80">
-                                                    {formatMessage(
-                                                        t.answeredIn,
-                                                        {
-                                                            seconds:
-                                                                lastSeconds,
-                                                        },
-                                                    )}
-                                                </span>
-                                            )}
-                                        </span>
-                                    </p>
-                                    <div className="flex flex-wrap gap-2">
-                                        {firstWorking && (
-                                            <Button
-                                                ref={useButtonRef}
-                                                className="h-9 max-w-full rounded-lg px-4"
-                                                disabled={chatLocked}
-                                                aria-describedby={resultId}
-                                                title={formatMessage(
-                                                    t.useInChat,
-                                                    {
-                                                        model: firstWorking.modelId,
-                                                    },
+                                <p
+                                    id={resultId}
+                                    role="status"
+                                    className="sr-only"
+                                    data-testid="test-result"
+                                >
+                                    {testPassed
+                                        ? passedText
+                                        : testFailed
+                                          ? validationError
+                                          : ""}
+                                </p>
+                                {testPassed ? (
+                                    <div className="space-y-3 rounded-xl border border-success/20 bg-success-muted/70 px-4 py-3.5">
+                                        <p className="flex items-start gap-2 text-[13px] font-medium text-success">
+                                            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                                            {/* A long model id wraps */}
+                                            <span className="min-w-0 [overflow-wrap:anywhere]">
+                                                {passedText}
+                                                {lastSeconds && (
+                                                    <span className="ml-2 text-xs font-normal opacity-80">
+                                                        {formatMessage(
+                                                            t.answeredIn,
+                                                            {
+                                                                seconds:
+                                                                    lastSeconds,
+                                                            },
+                                                        )}
+                                                    </span>
                                                 )}
-                                                onClick={() => {
-                                                    modelConfig.setSelectedModelId(
-                                                        firstWorking.id,
-                                                    )
-                                                    useUiStore
-                                                        .getState()
-                                                        .setSettingsOpen(false)
-                                                }}
-                                            >
-                                                <span className="truncate">
-                                                    {formatMessage(
+                                            </span>
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {firstWorking && (
+                                                <Button
+                                                    ref={useButtonRef}
+                                                    className="h-9 max-w-full rounded-lg px-4"
+                                                    disabled={chatLocked}
+                                                    aria-describedby={resultId}
+                                                    title={formatMessage(
                                                         t.useInChat,
                                                         {
                                                             model: firstWorking.modelId,
                                                         },
                                                     )}
+                                                    onClick={() => {
+                                                        modelConfig.setSelectedModelId(
+                                                            firstWorking.id,
+                                                        )
+                                                        useUiStore
+                                                            .getState()
+                                                            .setSettingsOpen(
+                                                                false,
+                                                            )
+                                                    }}
+                                                >
+                                                    <span className="truncate">
+                                                        {formatMessage(
+                                                            t.useInChat,
+                                                            {
+                                                                model: firstWorking.modelId,
+                                                            },
+                                                        )}
+                                                    </span>
+                                                </Button>
+                                            )}
+                                            <Button
+                                                ref={backButtonRef}
+                                                variant="outline"
+                                                className="h-9 rounded-lg bg-background px-4"
+                                                aria-describedby={resultId}
+                                                onClick={() =>
+                                                    setModelsPage("list")
+                                                }
+                                            >
+                                                {t.backToProviders}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-muted-foreground">
+                                            {t.testHint}
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-3">
+                                            <Button
+                                                // Not disabled while it runs: the
+                                                // focus would leave it
+                                                onClick={() => {
+                                                    if (!testing)
+                                                        handleValidate()
+                                                }}
+                                                disabled={!canTest}
+                                                aria-disabled={
+                                                    testing || undefined
+                                                }
+                                                className="h-9 max-w-full rounded-lg px-4"
+                                                title={testLabel}
+                                                data-testid="test-models"
+                                            >
+                                                {validationStatus ===
+                                                    "validating" && (
+                                                    <Loader2 className="size-4 animate-spin" />
+                                                )}
+                                                <span className="truncate">
+                                                    {testLabel}
                                                 </span>
                                             </Button>
-                                        )}
-                                        <Button
-                                            ref={backButtonRef}
-                                            variant="outline"
-                                            className="h-9 rounded-lg bg-background px-4"
-                                            aria-describedby={resultId}
-                                            onClick={() =>
-                                                setModelsPage("list")
-                                            }
-                                        >
-                                            {t.backToProviders}
-                                        </Button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <p className="text-xs text-muted-foreground">
-                                        {t.testHint}
-                                    </p>
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <Button
-                                            // Not disabled while it runs: the
-                                            // focus would leave it
-                                            onClick={() => {
-                                                if (!testing) handleValidate()
-                                            }}
-                                            disabled={!canTest}
-                                            aria-disabled={testing || undefined}
-                                            className="h-9 max-w-full rounded-lg px-4"
-                                            title={testLabel}
-                                            data-testid="test-models"
-                                        >
-                                            {validationStatus ===
-                                                "validating" && (
-                                                <Loader2 className="size-4 animate-spin" />
+                                            {testFailed && (
+                                                <p className="flex items-center gap-1 text-xs text-destructive">
+                                                    <X className="size-3" />
+                                                    {validationError}
+                                                </p>
                                             )}
-                                            <span className="truncate">
-                                                {testLabel}
-                                            </span>
-                                        </Button>
-                                        {testFailed && (
-                                            <p className="flex items-center gap-1 text-xs text-destructive">
-                                                <X className="size-3" />
-                                                {validationError}
+                                        </div>
+                                        {testBlocker && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {testBlocker}
                                             </p>
                                         )}
-                                    </div>
-                                    {testBlocker && (
-                                        <p className="text-xs text-muted-foreground">
-                                            {testBlocker}
-                                        </p>
-                                    )}
-                                </>
-                            )}
-                        </Step>
+                                    </>
+                                )}
+                            </Step>
 
-                        <button
-                            type="button"
-                            onClick={() => setDeleteConfirmOpen(true)}
-                            className="flex items-center gap-1.5 text-xs text-destructive hover:underline"
-                        >
-                            <Trash2 className="size-3.5" />
-                            {formatMessage(
-                                models.length === 0
-                                    ? t.deleteProviderOnly
-                                    : models.length === 1
-                                      ? t.deleteProviderNamedOne
-                                      : t.deleteProviderNamedOther,
-                                {
-                                    name: providerName(provider),
-                                    count: models.length,
-                                },
-                            )}
-                        </button>
+                            <button
+                                type="button"
+                                onClick={() => setDeleteConfirmOpen(true)}
+                                className="flex items-center gap-1.5 text-xs text-destructive hover:underline"
+                            >
+                                <Trash2 className="size-3.5" />
+                                {formatMessage(
+                                    models.length === 0
+                                        ? t.deleteProviderOnly
+                                        : models.length === 1
+                                          ? t.deleteProviderNamedOne
+                                          : t.deleteProviderNamedOther,
+                                    {
+                                        name: providerName(provider),
+                                        count: models.length,
+                                    },
+                                )}
+                            </button>
+                        </AzureCliSetup>
                     </div>
                 </ScrollArea>
             </div>

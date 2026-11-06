@@ -248,6 +248,23 @@
         "regenerateWithFeedback": "検証フィードバックを使用してダイアグラムを再生成"
     },
     "modelConfig": {
+        "azureCli": {
+            "authentication": "認証方法",
+            "apiKey": "API キー",
+            "cli": "Azure CLI（API キー不要）",
+            "description": "この Mac の既存の Azure CLI ログインを使います。API キーやトークンの貼り付けは不要です。",
+            "endpoint": "Azure エンドポイント URL",
+            "deployment": "デプロイ名",
+            "deploymentHint": "候補のモデル名ではなく、Azure リソースのデプロイ名を入力してください。",
+            "tenant": "テナント ID またはドメイン（任意）",
+            "loginHint": "ターミナルで az login または az login --tenant YOUR-TENANT-ID を実行してください。Cognitive Services OpenAI User などの推論ロールも必要です。",
+            "storageHint": "ブラウザーではなくデスクトップアプリのローカル設定に保存します。適用すると Desktop Azure CLI が既定のサーバーモデルになり、ローカルサーバーが再起動します。既存の API キー設定は保持されます。",
+            "save": "保存して Azure CLI を使う",
+            "saved": "デスクトップの Azure CLI 設定を適用しました。",
+            "failed": "デスクトップの Azure CLI 設定を適用できませんでした。",
+            "disable": "API キーモードを適用",
+            "disableHint": "ローカルサーバーでは Azure CLI が有効です。API キーモードを適用すると以前のサーバーモデル設定に戻ります。"
+        },
         "addProvider": "プロバイダーを追加",
         "modelId": "モデルID",
         "deleteProvider": "プロバイダーを削除",

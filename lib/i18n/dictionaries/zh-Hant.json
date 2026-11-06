@@ -293,6 +293,23 @@
         "regenerateWithFeedback": "使用驗證回饋重新產生圖表"
     },
     "modelConfig": {
+        "azureCli": {
+            "authentication": "驗證方式",
+            "apiKey": "API Key",
+            "cli": "Azure CLI（不需 API Key）",
+            "description": "使用此 Mac 上現有的 Azure CLI 登入，不需 API Key 或貼上權杖。",
+            "endpoint": "Azure 端點 URL",
+            "deployment": "部署名稱",
+            "deploymentHint": "請使用 Azure 資源中的部署名稱，而非建議的模型目錄名稱。",
+            "tenant": "租用戶 ID 或網域（選填）",
+            "loginHint": "請自行在終端機執行 az login 或 az login --tenant YOUR-TENANT-ID。你的身分還需有 Cognitive Services OpenAI User 等推論角色。",
+            "storageHint": "儲存在桌面應用程式的本機設定中，而非瀏覽器儲存空間。套用後將 Desktop Azure CLI 設為預設伺服器模型並重新啟動本機伺服器，保留現有 API Key 設定。",
+            "save": "儲存並使用 Azure CLI",
+            "saved": "已套用桌面 Azure CLI 設定。",
+            "failed": "無法套用桌面 Azure CLI 設定。",
+            "disable": "套用 API Key 模式",
+            "disableHint": "本機伺服器仍啟用 Azure CLI。套用 API Key 模式可還原之前的伺服器模型設定。"
+        },
         "addProvider": "新增服務商",
         "modelId": "模型 ID",
         "deleteProvider": "刪除服務商",

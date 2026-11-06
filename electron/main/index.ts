@@ -1,5 +1,6 @@
 import { app, BrowserWindow, dialog, shell } from "electron"
 import { buildAppMenu } from "./app-menu"
+import { applyAzureCliConfig } from "./azure-cli-config"
 import { loadEnvFile } from "./env-loader"
 import { registerIpcHandlers } from "./ipc-handlers"
 import { startNextServer, stopNextServer } from "./next-server"
@@ -42,6 +43,8 @@ if (!gotTheLock) {
         buildAppMenu()
 
         try {
+            // Surface invalid native settings through the startup error dialog.
+            applyAzureCliConfig()
             let serverUrl: string
             if (isDev) {
                 // Development: use the dev server URL

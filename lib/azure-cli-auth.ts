@@ -1,4 +1,5 @@
 import type { AzureOpenAIProviderSettings } from "@ai-sdk/azure"
+import { isAzureCliEndpoint } from "@/lib/types/azure-cli-config"
 
 const SCOPE = "https://cognitiveservices.azure.com/.default"
 
@@ -23,19 +24,7 @@ export function azureCliBaseUrl(baseUrl?: string): string {
         )
     }
     const value = baseUrl || `https://${resource}.openai.azure.com/openai`
-    let url: URL
-    try {
-        url = new URL(value)
-    } catch {
-        throw new Error("AZURE_BASE_URL must be a valid HTTPS endpoint URL.")
-    }
-    if (
-        url.protocol !== "https:" ||
-        url.username ||
-        url.password ||
-        url.search ||
-        url.hash
-    ) {
+    if (!isAzureCliEndpoint(value)) {
         throw new Error(
             "Azure CLI authentication requires an HTTPS endpoint without credentials, query parameters or fragments.",
         )

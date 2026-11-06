@@ -329,6 +329,8 @@ Azure needs either your resource name or your endpoint URL. Set one of the two. 
 
 #### Keyless Azure CLI login (local Node and desktop)
 
+**Desktop UI:** open Settings > Models, add or open **Azure OpenAI**, then choose **Azure CLI (no API key)** under Authentication. Enter the endpoint URL, deployment name and optional tenant ID/domain, and click **Save and use Azure CLI**. The app saves these values in its user-data folder's `azure-cli-config.json`, restarts its local server and selects **Desktop Azure CLI** in the chat. No key or token is stored. Settings persist across restarts. Saving makes this deployment the default server model; existing API-key entries in browser settings remain unchanged. Select **API key** and **Apply API-key mode** to restore the previous server-model configuration. Stop an active chat before applying settings. This UI requires the updated packaged desktop app; the Node development server still uses `.env.local`.
+
 Use this mode when your tenant disables API keys. Install [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) on the machine running the app, then sign in yourself in a terminal with `az login` (or `az login --tenant <tenant-id>`). The app never opens an interactive login.
 
 Add this to `.env.local` for the Node/Next app:
@@ -343,13 +345,13 @@ AI_MODEL=your-deployment-name
 
 Alternatively set `AZURE_BASE_URL=https://your-resource.openai.azure.com/openai` instead of the resource name. The endpoint must use HTTPS and cannot contain embedded credentials, query parameters or fragments. Use the deployment name, not the underlying model's catalog name. Keep `AZURE_API_KEY` unset; CLI mode never sends a server API key even if one remains configured. `AZURE_AUTH_MODE` defaults to `api-key`, so existing setups do not change. A browser-supplied API key still uses API-key authentication.
 
-Run `npm install` and `npm run dev`, then use the server's default model in the editor. Do not add a keyless Azure entry in browser Settings: that form and its Test button are for API-key credentials. For a named entry in the model picker, use server configuration:
+Run `npm install` and `npm run dev`, then use the server's default model in the editor. In the web app, do not add a keyless Azure entry in browser Settings: that form and its Test button are for API-key credentials. In the packaged app, use the desktop Authentication selector described above instead. For a named entry in the web app's model picker, use server configuration:
 
 ```bash
 AI_MODELS_CONFIG='{"providers":[{"name":"Azure CLI","provider":"azure","models":["your-deployment-name"],"default":true}]}'
 ```
 
-Existing server-model `baseUrlEnv` configuration also works; `apiKeyEnv` is ignored in CLI mode. Authentication mode and tenant are server-environment settings only, not browser or admin-panel fields. Azure Identity obtains bearer tokens for `https://cognitiveservices.azure.com/.default` and caches/refreshes them in the server process. Tokens are never saved in browser settings or env files. Only server-configured endpoints receive them, and CLI-authenticated requests refuse redirects.
+Existing server-model `baseUrlEnv` configuration also works; `apiKeyEnv` is ignored in CLI mode. Authentication mode and tenant come from the server environment or native desktop configuration, not browser-stored provider entries or admin-panel fields. Azure Identity obtains bearer tokens for `https://cognitiveservices.azure.com/.default` and caches/refreshes them in the server process. Tokens are never saved in browser settings or env files. Only server-configured endpoints receive them, and CLI-authenticated requests refuse redirects.
 
 For the packaged Electron app, put the same configuration in `.env` in its user-data folder (on macOS, usually `~/Library/Application Support/Next AI Draw.io/.env`), then restart the app. An `.env` next to the executable takes precedence if present. The local Next server runs inside Electron's Node utility process on `127.0.0.1`, using the same OS user's CLI login. Finder does not read your shell's PATH; the app preserves inherited PATH and adds `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew). A nonstandard CLI installation must be on the app's inherited PATH. No macOS signing or packaging changes are required for authentication.
 

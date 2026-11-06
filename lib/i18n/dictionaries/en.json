@@ -293,6 +293,23 @@
         "regenerateWithFeedback": "Regenerate the diagram using the validation feedback"
     },
     "modelConfig": {
+        "azureCli": {
+            "authentication": "Authentication",
+            "apiKey": "API key",
+            "cli": "Azure CLI (no API key)",
+            "description": "Use your existing Azure CLI login on this Mac. No API key or pasted token is required.",
+            "endpoint": "Azure endpoint URL",
+            "deployment": "Deployment name",
+            "deploymentHint": "Use the deployment name from your Azure resource, not the suggested model catalog name.",
+            "tenant": "Tenant ID or domain (optional)",
+            "loginHint": "Sign in yourself in Terminal with az login, or az login --tenant YOUR-TENANT-ID. Your identity also needs an inference role such as Cognitive Services OpenAI User.",
+            "storageHint": "Saved in this desktop app's local configuration, not browser storage. Applying makes Desktop Azure CLI the default server model and restarts the local server. Existing API-key entries are retained.",
+            "save": "Save and use Azure CLI",
+            "saved": "Desktop Azure CLI settings applied.",
+            "failed": "Could not apply desktop Azure CLI settings.",
+            "disable": "Apply API-key mode",
+            "disableHint": "Azure CLI is still active on the local server. Apply API-key mode to restore the previous server-model configuration."
+        },
         "addProvider": "Add provider",
         "modelId": "Model ID",
         "deleteProvider": "Delete provider",

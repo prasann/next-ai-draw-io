@@ -1,5 +1,11 @@
 import { app, type IpcMainInvokeEvent, ipcMain } from "electron"
 import { buildAppMenu } from "./app-menu"
+import {
+    applyAzureCliConfig,
+    azureCliModelId,
+    getAzureCliConfig,
+    saveAzureCliConfig,
+} from "./azure-cli-config"
 import { setUserLocale, USER_LOCALES, type UserLocale } from "./config-manager"
 import { restartNextServer } from "./next-server"
 import { savePreviewAsPdf } from "./pdf-export"
@@ -30,10 +36,49 @@ function handle<Args extends unknown[]>(
     })
 }
 
+let applyingAzureCli = false
 /**
  * Register all IPC handlers
  */
 export function registerIpcHandlers(): void {
+    handle("get-azure-cli", () => getAzureCliConfig())
+    handle("set-azure-cli", async (_event, value: unknown) => {
+        if (applyingAzureCli) {
+            return {
+                success: false,
+                error: "Azure CLI settings are already being applied. Wait for the server restart and retry.",
+            }
+        }
+        if (!app.isPackaged) {
+            return {
+                success: false,
+                error: "Desktop Azure CLI settings require the packaged app. Configure .env.local for the development server.",
+            }
+        }
+        applyingAzureCli = true
+        try {
+            const config = saveAzureCliConfig(value)
+            applyAzureCliConfig()
+            await restartNextServer()
+            return {
+                success: true,
+                modelId: config.enabled
+                    ? azureCliModelId(config.deployment)
+                    : undefined,
+            }
+        } catch (error) {
+            console.error("Failed to apply desktop Azure CLI settings:", error)
+            return {
+                success: false,
+                error:
+                    error instanceof Error
+                        ? error.message
+                        : "Could not apply Azure CLI settings.",
+            }
+        } finally {
+            applyingAzureCli = false
+        }
+    })
     // ==================== Where the chats are ====================
 
     // The page saved a chat, or loaded without any: decides which port

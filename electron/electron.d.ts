@@ -26,6 +26,14 @@ declare global {
         electronAPI?: {
             /** Whether running in Electron environment */
             isElectron: boolean
+            getAzureCli?: () => Promise<
+                import("../lib/types/azure-cli-config").AzureCliConfig
+            >
+            setAzureCli?: (
+                config: import("../lib/types/azure-cli-config").AzureCliConfig,
+            ) => Promise<
+                import("../lib/types/azure-cli-config").SaveAzureCliResult
+            >
             /** Get proxy configuration */
             getProxy: () => Promise<ProxyConfig>
             /** Set proxy configuration (saves and restarts server) */

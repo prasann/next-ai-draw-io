@@ -7,6 +7,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     // Check if running in Electron
     isElectron: true,
 
+    getAzureCli: () => ipcRenderer.invoke("get-azure-cli"),
+    setAzureCli: (
+        config: import("../../lib/types/azure-cli-config").AzureCliConfig,
+    ) => ipcRenderer.invoke("set-azure-cli", config),
+
     // Proxy settings
     getProxy: () => ipcRenderer.invoke("get-proxy"),
     setProxy: (config: { httpProxy?: string; httpsProxy?: string }) =>

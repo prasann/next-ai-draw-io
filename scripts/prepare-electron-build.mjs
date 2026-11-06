@@ -31,7 +31,18 @@ mkdirSync(targetDir, { recursive: true })
 
 // Copy standalone (includes node_modules)
 console.log("Copying standalone directory...")
-copyDereferenced(standaloneDir, targetDir)
+// Broad runtime file traces may include prior desktop builds. Never nest
+// those packages inside the next installer.
+const previousBuilds = new Set([
+    "release",
+    "electron-standalone",
+    "dist-electron",
+])
+for (const entry of readdirSync(standaloneDir)) {
+    if (!previousBuilds.has(entry)) {
+        copyDereferenced(join(standaloneDir, entry), join(targetDir, entry))
+    }
+}
 
 // Next.js copies the build machine's .env files into standalone; don't ship
 // them, they can hold the builder's API keys
