@@ -10,6 +10,7 @@ import {
 import { MockLanguageModelV3 } from "ai/test"
 import { describe, expect, it } from "vitest"
 import { z } from "zod"
+import { AzureCliAuthenticationError } from "@/lib/azure-cli-auth"
 import {
     classifyLLMError,
     isToolCallError,
@@ -26,6 +27,22 @@ const apiError = (statusCode: number, message: string, responseBody = "") =>
     })
 
 describe("classifyLLMError", () => {
+    it("keeps sanitized CLI recovery instructions on server credentials", () => {
+        const error = new AzureCliAuthenticationError(
+            new Error("Please run az login; private-account-details"),
+        )
+        const classified = JSON.parse(streamErrorText(error, true))
+        expect(classified.message).toContain("Run az login")
+        expect(classified.message).not.toContain("private-account-details")
+        const retry = new RetryError({
+            message: "Failed after retry",
+            reason: "maxRetriesExceeded",
+            errors: [error],
+        })
+        expect(JSON.parse(streamErrorText(retry, true)).message).toContain(
+            "Run az login",
+        )
+    })
     it("reads the status code, not the message", () => {
         // Providers rarely put the number in their message
         expect(

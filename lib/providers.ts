@@ -431,11 +431,11 @@ const defs = {
             "zh-Hant": "Key 和資源位址",
         },
         baseUrlHint: {
-            en: "Your Azure OpenAI resource's URL, https://<resource>.openai.azure.com/openai",
-            zh: "Azure OpenAI 资源的地址，形如 https://<资源名>.openai.azure.com/openai",
-            ja: "Azure OpenAI リソースの URL。例: https://<リソース名>.openai.azure.com/openai",
+            en: "Your Azure OpenAI resource's URL, https://<resource>.openai.azure.com/openai. For keyless Azure CLI login, configure AZURE_AUTH_MODE=azure-cli on the local server and use a server model instead of adding a key here.",
+            zh: "Azure OpenAI 资源的地址，形如 https://<资源名>.openai.azure.com/openai。无密钥 Azure CLI 登录请在本地服务器配置 AZURE_AUTH_MODE=azure-cli 并使用服务器模型，无需在此添加 Key。",
+            ja: "Azure OpenAI リソースの URL。例: https://<リソース名>.openai.azure.com/openai。キーなしの Azure CLI 認証はローカルサーバーで AZURE_AUTH_MODE=azure-cli を設定し、ここでキーを追加せずサーバーモデルを使用してください。",
             "zh-Hant":
-                "Azure OpenAI 資源的位址，形如 https://<資源名稱>.openai.azure.com/openai",
+                "Azure OpenAI 資源的位址，形如 https://<資源名稱>.openai.azure.com/openai。無金鑰 Azure CLI 登入請在本機伺服器設定 AZURE_AUTH_MODE=azure-cli 並使用伺服器模型，不必在此新增 Key。",
         },
         // Deployment names in the user's resource
         models: [

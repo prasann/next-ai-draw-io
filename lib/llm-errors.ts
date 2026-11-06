@@ -6,6 +6,7 @@ import {
     RetryError,
     ToolCallRepairError,
 } from "ai"
+import { AzureCliAuthenticationError } from "@/lib/azure-cli-auth"
 
 /**
  * What went wrong with a model call, for a hint the user can act on. The
@@ -130,7 +131,10 @@ export function streamErrorText(error: unknown, hideDetails = false): string {
     }
     if (isToolCallError(error)) return (error as Error).message
     const classified = classifyLLMError(error)
-    if (hideDetails) {
+    const lastError = RetryError.isInstance(error) ? error.lastError : error
+    // This error contains only our sanitized CLI recovery instructions,
+    // never provider/account details, even on a server-configured identity.
+    if (hideDetails && !(lastError instanceof AzureCliAuthenticationError)) {
         console.error("[chat] Provider error:", error)
         if (classified.code === "forbidden") {
             // The hint says all the user can do; there is no message to add

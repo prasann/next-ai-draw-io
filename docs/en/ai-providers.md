@@ -5,7 +5,7 @@ When you host Next AI Draw.io yourself, environment variables choose the AI prov
 ## Get started
 
 1. Copy `env.example` to `.env.local`.
-2. Set the API key of the provider you chose.
+2. Set the API key of the provider you chose, or use the keyless Azure CLI setup below.
 3. Set `AI_MODEL` to the model you want.
 4. Run `npm run dev`.
 
@@ -326,6 +326,44 @@ GOOGLE_VERTEX_BASE_URL=https://your-custom-endpoint
 ### Azure OpenAI
 
 Azure needs either your resource name or your endpoint URL. Set one of the two. If you set both, `AZURE_BASE_URL` is used.
+
+#### Keyless Azure CLI login (local Node and desktop)
+
+Use this mode when your tenant disables API keys. Install [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) on the machine running the app, then sign in yourself in a terminal with `az login` (or `az login --tenant <tenant-id>`). The app never opens an interactive login.
+
+Add this to `.env.local` for the Node/Next app:
+
+```bash
+AI_PROVIDER=azure
+AZURE_AUTH_MODE=azure-cli
+AZURE_RESOURCE_NAME=your-resource-name
+AI_MODEL=your-deployment-name
+# AZURE_TENANT_ID=your-tenant-id  # Optional: explicitly select the login tenant
+```
+
+Alternatively set `AZURE_BASE_URL=https://your-resource.openai.azure.com/openai` instead of the resource name. The endpoint must use HTTPS and cannot contain embedded credentials, query parameters or fragments. Use the deployment name, not the underlying model's catalog name. Keep `AZURE_API_KEY` unset; CLI mode never sends a server API key even if one remains configured. `AZURE_AUTH_MODE` defaults to `api-key`, so existing setups do not change. A browser-supplied API key still uses API-key authentication.
+
+Run `npm install` and `npm run dev`, then use the server's default model in the editor. Do not add a keyless Azure entry in browser Settings: that form and its Test button are for API-key credentials. For a named entry in the model picker, use server configuration:
+
+```bash
+AI_MODELS_CONFIG='{"providers":[{"name":"Azure CLI","provider":"azure","models":["your-deployment-name"],"default":true}]}'
+```
+
+Existing server-model `baseUrlEnv` configuration also works; `apiKeyEnv` is ignored in CLI mode. Authentication mode and tenant are server-environment settings only, not browser or admin-panel fields. Azure Identity obtains bearer tokens for `https://cognitiveservices.azure.com/.default` and caches/refreshes them in the server process. Tokens are never saved in browser settings or env files. Only server-configured endpoints receive them, and CLI-authenticated requests refuse redirects.
+
+For the packaged Electron app, put the same configuration in `.env` in its user-data folder (on macOS, usually `~/Library/Application Support/Next AI Draw.io/.env`), then restart the app. An `.env` next to the executable takes precedence if present. The local Next server runs inside Electron's Node utility process on `127.0.0.1`, using the same OS user's CLI login. Finder does not read your shell's PATH; the app preserves inherited PATH and adds `/opt/homebrew/bin` (Apple Silicon Homebrew) and `/usr/local/bin` (Intel Homebrew). A nonstandard CLI installation must be on the app's inherited PATH. No macOS signing or packaging changes are required for authentication.
+
+Troubleshooting:
+
+- **CLI missing:** install Azure CLI and verify `az --version` in your terminal. Restart the desktop app after installation.
+- **Login missing, expired or wrong tenant:** run `az login --tenant <tenant-id>` yourself and check `AZURE_TENANT_ID` if set.
+- **403 / permission denied:** login is not inference authorization. Your identity needs an inference role such as **Cognitive Services OpenAI User** on the Azure OpenAI resource. Ask the resource administrator; the app cannot grant or bypass access.
+- **404:** verify the resource endpoint and deployment name, and that the deployment supports the Azure OpenAI v1 Responses API used by the app.
+- **Timeout / connection failure:** token acquisition has a 10-second limit. Check corporate proxy, VPN, private-endpoint DNS, resource firewall and access to Microsoft Entra ID. Retrying cannot bypass tenant or network policy.
+
+This mode requires a local Node runtime with Azure CLI installed and logged in. It is not a managed-identity flow or a Cloudflare/Edge runtime option. Keep the local app private: anyone allowed to call its server can use its configured identity, just as with server API keys. The app still sends the chosen prompt and diagram context to Azure OpenAI; this is not an offline inference mode or a privacy overhaul.
+
+#### API-key authentication
 
 With the resource name:
 

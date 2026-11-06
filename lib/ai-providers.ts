@@ -23,6 +23,11 @@ import {
 } from "@/lib/admin/providers"
 import { getEnvFallback } from "@/lib/admin/settings"
 import {
+    azureAuthMode,
+    azureCliBaseUrl,
+    azureCliSettings,
+} from "@/lib/azure-cli-auth"
+import {
     PROVIDER_NAMES,
     PROVIDERS,
     type ProviderDef,
@@ -602,6 +607,19 @@ function serverCredentialError(
     customApiKeyEnv?: string | string[],
     customBaseUrlEnv?: string,
 ): string | null {
+    if (provider === "azure" && azureAuthMode() === "azure-cli") {
+        try {
+            azureCliBaseUrl(
+                resolveBaseUrlEnv(
+                    { baseUrlEnv: customBaseUrlEnv },
+                    "AZURE_BASE_URL",
+                ),
+            )
+            return null
+        } catch (error) {
+            return error instanceof Error ? error.message : String(error)
+        }
+    }
     if (Array.isArray(customApiKeyEnv)) {
         const hasAnyKey = customApiKeyEnv.some((envVar) => process.env[envVar])
         if (!hasAnyKey) {
@@ -702,6 +720,7 @@ type KeySource = "client" | "server" | "none"
 
 /** Where and how to call a provider, once credentials are resolved */
 interface Endpoint {
+    azureCli?: boolean
     apiKey?: string
     /** Anthropic Bearer auth (ANTHROPIC_AUTH_TOKEN), server only */
     authToken?: string
@@ -742,6 +761,28 @@ function resolveEndpoint(
     // trusted URL is the server's own (the admin Test of an entry without
     // one), not a user's
     const guarded = !!clientUrl && !overrides?.trustedBaseUrl
+
+    if (
+        provider === "azure" &&
+        !overrides?.apiKey &&
+        azureAuthMode() === "azure-cli"
+    ) {
+        // Even an admin Test URL is not the environment's endpoint.
+        if (clientUrl) {
+            throw new Error(
+                "Azure CLI authentication uses only the server-configured endpoint. Remove the URL override and select a server model; use your own API key for browser-configured endpoints.",
+            )
+        }
+        return {
+            azureCli: true,
+            baseURL: azureCliBaseUrl(
+                resolveBaseUrlEnv(overrides, "AZURE_BASE_URL"),
+            ),
+            configuredBaseURL: true,
+            guarded: false,
+            keySource: "server",
+        }
+    }
 
     switch (def.credential) {
         case "aws": {
@@ -1015,6 +1056,9 @@ function createModel(
                 : model
         }
         case "azure":
+            if (e.azureCli && e.baseURL) {
+                return createAzure(azureCliSettings(e.baseURL))(modelId)
+            }
             // baseURL takes precedence over resourceName per SDK behavior
             return createAzure({
                 ...opts,
@@ -1167,7 +1211,13 @@ export function getAIModel(clientOverrides?: ClientOverrides): ModelConfig {
         } else {
             // List configured providers for better error message
             const configured = Object.entries(REQUIRED_KEY_VARS)
-                .filter(([, envVar]) => envVar && process.env[envVar as string])
+                .filter(
+                    ([p, envVar]) =>
+                        (envVar && process.env[envVar]) ||
+                        (p === "azure" &&
+                            process.env.AZURE_AUTH_MODE === "azure-cli" &&
+                            serverCredentialError("azure") === null),
+                )
                 .map(([p]) => p)
 
             if (configured.length === 0) {

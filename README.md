@@ -176,6 +176,8 @@ Open [http://localhost:6002](http://localhost:6002).
 
 **Which model**: the task is to produce long text in a strict format (draw.io XML), so pick a capable model; small models tend to produce broken diagrams.
 
+**Keyless Azure OpenAI**: the local Node app and desktop app can use your existing Azure CLI login with `AZURE_AUTH_MODE=azure-cli`, without an API key. See the [Azure CLI setup and troubleshooting](./docs/en/ai-providers.md#keyless-azure-cli-login-local-node-and-desktop).
+
 **Several models and the admin panel**: list several model IDs in `AI_MODEL` separated by commas, or configure models from several providers with the `AI_MODELS_CONFIG` environment variable or an `ai-models.json` file, and every user can use them without a key of their own. Set `ADMIN_PASSWORD` and open `/admin` to manage models, access codes, feature switches, observability and quotas from a web page; see the [admin panel guide](./docs/en/admin-panel.md).
 
 ## Support

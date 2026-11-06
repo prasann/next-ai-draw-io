@@ -6,6 +6,7 @@ import {
     getAllocatedPort,
     isPortAvailable,
 } from "./port-manager"
+import { serverPathWithCli } from "./server-path"
 import { setAppUrl } from "./window-manager"
 
 let serverProcess: UtilityProcess | null = null
@@ -93,6 +94,9 @@ async function startServer(): Promise<string> {
             env[key] = value
         }
     }
+
+    const cliPath = serverPathWithCli(env.PATH, process.platform)
+    if (cliPath) env.PATH = cliPath
 
     // Debug: log proxy-related env vars
     console.log("Proxy env vars being passed to server:", {
