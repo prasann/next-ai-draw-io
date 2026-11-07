@@ -30,6 +30,7 @@ import {
     selectPage,
 } from "@/lib/drawio/editor-bridge"
 import { formatMessage } from "@/lib/i18n/utils"
+import { parseDrawioFileContent } from "@/packages/mcp-server/src/load-diagram.ts"
 import {
     BLANK_MXFILE,
     normalizeToMxfile,
@@ -130,6 +131,9 @@ interface DiagramContextType {
     isDrawioReady: boolean
     onDrawioLoad: () => void
     resetDrawioReady: () => void
+    /** Capture the full document before an external editor is reloaded.
+     * Rejects if the editor cannot safely provide its latest document. */
+    prepareForReload: () => Promise<void>
     /** Register the handler told about every committed AI change */
     setCommitHandler: (
         handler: ((commit: DiagramCommit) => void) | null,
@@ -464,6 +468,37 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
         updateChartXML(data.xml)
     }
 
+    const prepareForReload = useCallback(async () => {
+        const deadline = Date.now() + 10000
+        while (Date.now() < deadline) {
+            // A transient export or a pending load is not the document yet.
+            if (transientRef.current || pendingLoadsRef.current > 0) {
+                await new Promise((resolve) => setTimeout(resolve, 100))
+                continue
+            }
+            drawioRef.current?.finishEditing?.()
+            const before = chartXMLRef.current
+            const result = await requestExport(
+                { format: "xml" },
+                Math.max(1, deadline - Date.now()),
+            )
+            if (!result?.xml) {
+                throw new Error(
+                    "Could not capture the diagram before reloading",
+                )
+            }
+            if (transientRef.current || pendingLoadsRef.current > 0) continue
+            // A newer autosave or AI load wins over this export's snapshot.
+            if (chartXMLRef.current === before) {
+                const parsed = parseDrawioFileContent(result.xml)
+                if (!parsed.ok) throw new Error(parsed.error)
+                handleDiagramAutoSave({ xml: parsed.xml })
+            }
+            return
+        }
+        throw new Error("The diagram is still loading or being exported")
+    }, [requestExport])
+
     const clearDiagram = () => {
         const emptyDiagram = BLANK_MXFILE
         // Skip validation for trusted internal template (loadDiagram also sets chartXML)
@@ -622,6 +657,7 @@ export function DiagramProvider({ children }: { children: React.ReactNode }) {
                 isDrawioReady,
                 onDrawioLoad,
                 resetDrawioReady,
+                prepareForReload,
                 setCommitHandler,
                 startTurn,
             }}

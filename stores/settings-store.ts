@@ -2,6 +2,7 @@ import { create } from "zustand"
 import { STORAGE_KEYS } from "@/lib/storage"
 
 export type ThemePreference = "light" | "dark" | "system"
+export type DiagramAppearance = "follow-app" | "light" | "dark"
 export type SendShortcut = "enter" | "ctrl-enter"
 
 export const PANEL_MIN_WIDTH = 320
@@ -13,6 +14,7 @@ interface SettingsState {
     theme: ThemePreference
     /** Resolved from `theme` and the system setting */
     isDark: boolean
+    diagramAppearance: DiagramAppearance
     sendShortcut: SendShortcut
     minimalStyle: boolean
     vlmValidationEnabled: boolean
@@ -21,6 +23,7 @@ interface SettingsState {
     panelWidth: number
     hydrate: () => void
     setTheme: (theme: ThemePreference) => void
+    setDiagramAppearance: (appearance: DiagramAppearance) => void
     setSendShortcut: (value: SendShortcut) => void
     setMinimalStyle: (value: boolean) => void
     setVlmValidationEnabled: (value: boolean) => void
@@ -44,6 +47,25 @@ function write(key: string, value: string | null) {
     } catch {
         // Storage can be unavailable (private mode, quota)
     }
+}
+
+export function isDiagramAppearance(
+    value: unknown,
+): value is DiagramAppearance {
+    return value === "follow-app" || value === "light" || value === "dark"
+}
+
+export function readDiagramAppearance(): DiagramAppearance {
+    const stored = read(STORAGE_KEYS.diagramAppearance)
+    return isDiagramAppearance(stored) ? stored : "follow-app"
+}
+
+export function selectDiagramDark(
+    settings: Pick<SettingsState, "diagramAppearance" | "isDark">,
+): boolean {
+    return settings.diagramAppearance === "follow-app"
+        ? settings.isDark
+        : settings.diagramAppearance === "dark"
 }
 
 function systemPrefersDark(): boolean {
@@ -76,6 +98,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     hydrated: false,
     theme: "system",
     isDark: false,
+    diagramAppearance: "follow-app",
     sendShortcut: "enter",
     minimalStyle: false,
     vlmValidationEnabled: false,
@@ -105,6 +128,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             hydrated: true,
             theme,
             isDark,
+            diagramAppearance: readDiagramAppearance(),
             // Stored only when picked in Settings: a stored "ctrl-enter" is
             // the user's own choice, so it stays
             sendShortcut:
@@ -139,6 +163,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
             theme === "system" ? systemPrefersDark() : theme === "dark"
         set({ theme, isDark })
         applyDarkClass(isDark)
+    },
+    setDiagramAppearance: (diagramAppearance) => {
+        write(
+            STORAGE_KEYS.diagramAppearance,
+            diagramAppearance === "follow-app" ? null : diagramAppearance,
+        )
+        set({ diagramAppearance })
     },
     setSendShortcut: (value) => {
         write(STORAGE_KEYS.sendShortcut, value)

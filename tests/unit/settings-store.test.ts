@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { STORAGE_KEYS } from "@/lib/storage"
-import { isSendKey, useSettingsStore } from "@/stores/settings-store"
+import {
+    isSendKey,
+    selectDiagramDark,
+    useSettingsStore,
+} from "@/stores/settings-store"
 
 const key = (
     k: string,
@@ -69,5 +73,69 @@ describe("settings store hydrate", () => {
         document.documentElement.className = ""
         useSettingsStore.getState().hydrate()
         expect(document.documentElement.classList.contains("dark")).toBe(true)
+    })
+
+    it("follows the app by default and ignores invalid saved appearances", () => {
+        for (const saved of [null, "invalid", "system"]) {
+            localStorage.removeItem(STORAGE_KEYS.diagramAppearance)
+            if (saved)
+                localStorage.setItem(STORAGE_KEYS.diagramAppearance, saved)
+            useSettingsStore.setState({ hydrated: false })
+            useSettingsStore.getState().hydrate()
+            expect(useSettingsStore.getState().diagramAppearance).toBe(
+                "follow-app",
+            )
+            expect(selectDiagramDark(useSettingsStore.getState())).toBe(true)
+        }
+    })
+
+    it("persists an independent override through hydration and app theme changes", () => {
+        useSettingsStore.getState().hydrate()
+        useSettingsStore.getState().setDiagramAppearance("light")
+        expect(localStorage.getItem(STORAGE_KEYS.diagramAppearance)).toBe(
+            "light",
+        )
+        expect(document.documentElement.classList.contains("dark")).toBe(true)
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(false)
+
+        useSettingsStore.setState({
+            hydrated: false,
+            diagramAppearance: "follow-app",
+        })
+        useSettingsStore.getState().hydrate()
+        expect(useSettingsStore.getState().diagramAppearance).toBe("light")
+        useSettingsStore.getState().setTheme("light")
+        useSettingsStore.getState().setDiagramAppearance("dark")
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(true)
+        expect(document.documentElement.classList.contains("dark")).toBe(false)
+    })
+
+    it("follows system changes only when the diagram follows the app", () => {
+        let onChange: ((event: { matches: boolean }) => void) | undefined
+        vi.stubGlobal(
+            "matchMedia",
+            vi.fn(() => ({
+                matches: true,
+                addEventListener: (
+                    _type: string,
+                    callback: typeof onChange,
+                ) => {
+                    onChange = callback
+                },
+            })),
+        )
+        useSettingsStore.getState().hydrate()
+        onChange?.({ matches: false })
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(false)
+        useSettingsStore.getState().setDiagramAppearance("light")
+        onChange?.({ matches: true })
+        expect(useSettingsStore.getState().isDark).toBe(true)
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(false)
+
+        useSettingsStore.getState().setDiagramAppearance("follow-app")
+        expect(localStorage.getItem(STORAGE_KEYS.diagramAppearance)).toBeNull()
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(true)
+        onChange?.({ matches: false })
+        expect(selectDiagramDark(useSettingsStore.getState())).toBe(false)
     })
 })

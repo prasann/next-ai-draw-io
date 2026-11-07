@@ -55,7 +55,9 @@
 :root {
     --radius: 0.75rem;
 
-    --canvas: #f4f5f7;
+    --canvas-light: #f4f5f7;
+    --canvas-dark: #1b1d1e;
+    --canvas: var(--canvas-light);
     --background: #f4f5f7;
     --foreground: #14181d;
 
@@ -128,7 +130,7 @@
  */
 .dark {
     /* Neutral greys: the canvas matches draw.io's own dark workspace */
-    --canvas: #1b1d1e;
+    --canvas: var(--canvas-dark);
     --background: #1b1d1e;
     --foreground: #ececec;
 

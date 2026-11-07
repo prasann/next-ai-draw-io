@@ -71,6 +71,114 @@ describe("exports in flight at the same time", () => {
         expect(await current).toContain('value="current"')
     })
 
+    describe("capturing a document before an external editor reload", () => {
+        const doc = (label: string) =>
+            `<mxfile><diagram id="a" name="A"><mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="2" value="${label}" style="fillColor=#ffcc00;image=data:image/png,icon;" parent="1" vertex="1"><mxGeometry x="10" y="20" width="100" height="50" as="geometry"/></mxCell></root></mxGraphModel></diagram><diagram id="b" name="B"><mxGraphModel><root/></mxGraphModel></diagram></mxfile>`
+
+        it("captures un-autosaved edits on all pages without changing colors or icons", async () => {
+            const { result, requests, reply } = setup()
+            act(() => result.current.onDrawioLoad())
+            const capture = result.current.prepareForReload()
+            expect(requests[0].format).toBe("xml")
+            await reply(requests[0], "", doc("Latest edit"))
+            await capture
+            expect(result.current.chartXML).toBe(doc("Latest edit"))
+            expect(requests).toHaveLength(1)
+        })
+
+        it("inflates compressed export pages using the existing file loader", async () => {
+            const { result, requests, reply } = setup()
+            act(() => result.current.onDrawioLoad())
+            const capture = result.current.prepareForReload()
+            const model =
+                '<mxGraphModel><root><mxCell id="2" value="Compressed edit" style="fillColor=#abcdef;"/></root></mxGraphModel>'
+            const packed = deflateRawSync(
+                Buffer.from(encodeURIComponent(model)),
+            ).toString("base64")
+            await reply(
+                requests[0],
+                "",
+                `<mxfile><diagram id="a" name="A">${packed}</diagram><diagram id="b" name="B">${packed}</diagram></mxfile>`,
+            )
+            await capture
+            expect(result.current.chartXML).toContain('value="Compressed edit"')
+            expect(result.current.chartXML).toContain("fillColor=#abcdef")
+            expect(
+                result.current.chartXML.match(/<mxGraphModel>/g),
+            ).toHaveLength(2)
+        })
+
+        it("does not overwrite a newer autosave with an older snapshot", async () => {
+            const { result, requests, reply } = setup()
+            act(() => {
+                result.current.onDrawioLoad()
+                result.current.handleDiagramAutoSave({ xml: doc("Before") })
+            })
+            const capture = result.current.prepareForReload()
+            act(() =>
+                result.current.handleDiagramAutoSave({
+                    xml: doc("Newer edit"),
+                }),
+            )
+            await reply(requests[0], "", doc("Older snapshot"))
+            await capture
+            expect(result.current.chartXML).toBe(doc("Newer edit"))
+        })
+
+        it("waits for an in-flight load instead of snapshotting the previous document", async () => {
+            vi.useFakeTimers()
+            try {
+                const { result, requests, reply } = setup()
+                act(() => {
+                    result.current.onDrawioLoad()
+                    result.current.loadDiagram(doc("Pending"), true)
+                })
+                const capture = result.current.prepareForReload()
+                expect(requests).toHaveLength(0)
+                act(() => result.current.onDrawioLoad())
+                await act(() => vi.advanceTimersByTimeAsync(100))
+                expect(requests[0].format).toBe("xml")
+                await reply(requests[0], "", doc("Pending"))
+                await capture
+                expect(result.current.chartXML).toBe(doc("Pending"))
+            } finally {
+                vi.useRealTimers()
+            }
+        })
+
+        it("rejects a failed export and keeps the current document", async () => {
+            vi.useFakeTimers()
+            try {
+                const { result } = setup()
+                act(() => {
+                    result.current.onDrawioLoad()
+                    result.current.handleDiagramAutoSave({
+                        xml: doc("Keep me"),
+                    })
+                })
+                const rejected = expect(
+                    result.current.prepareForReload(),
+                ).rejects.toThrow("capture")
+                await act(() => vi.advanceTimersByTimeAsync(10000))
+                await rejected
+                expect(result.current.chartXML).toBe(doc("Keep me"))
+            } finally {
+                vi.useRealTimers()
+            }
+        })
+
+        it("rejects malformed exports instead of discarding the document", async () => {
+            const { result, requests, reply } = setup()
+            act(() => result.current.onDrawioLoad())
+            const rejected = expect(
+                result.current.prepareForReload(),
+            ).rejects.toThrow()
+            await reply(requests[0], "", "Not XML")
+            await rejected
+            expect(result.current.chartXML).toBe("")
+        })
+    })
+
     it("save each file with its own result", async () => {
         const { result, requests, reply } = setup()
         const saved: { name: string; href: string }[] = []

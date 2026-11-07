@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
 
     // Appearance
     darkMode: "next-ai-draw-io-dark-mode",
+    diagramAppearance: "next-ai-draw-io-diagram-appearance",
     locale: "next-ai-draw-io-locale",
     minimalStyle: "next-ai-draw-io-minimal-style",
     panelWidth: "next-ai-draw-io-panel-width",

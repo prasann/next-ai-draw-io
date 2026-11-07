@@ -12,6 +12,7 @@ import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
+import { DiagramAppearanceControl } from "@/components/canvas/diagram-appearance-control"
 import { useChatEngine } from "@/components/chat/chat-engine"
 import { GitHubIcon } from "@/components/icons/github"
 import { ModelConfigDialog } from "@/components/model-config-dialog"
@@ -290,6 +291,13 @@ function GeneralTab({ open }: { open: boolean }) {
                             },
                         ]}
                     />
+                </Row>
+                <Row
+                    label={t.diagramAppearance}
+                    description={t.diagramAppearanceDescription}
+                    htmlFor="diagram-appearance"
+                >
+                    <DiagramAppearanceControl id="diagram-appearance" />
                 </Row>
                 <Row
                     label={t.language}

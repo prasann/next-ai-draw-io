@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react"
+import { DiagramAppearanceControl } from "@/components/canvas/diagram-appearance-control"
 import { DrawioFrame } from "@/components/canvas/drawio-frame"
 import { useLocale } from "@/components/canvas/locale-context"
 import { OutlineOffer } from "@/components/canvas/outline-offer"
+import { Button } from "@/components/ui/button"
 import { useDiagram } from "@/contexts/diagram-context"
 import { useDictionary } from "@/hooks/use-dictionary"
 import {
@@ -19,7 +21,7 @@ import { i18n, type Locale } from "@/lib/i18n/config"
 import { STORAGE_KEYS } from "@/lib/storage"
 import { cn } from "@/lib/utils"
 import { useCanvasStore } from "@/stores/canvas-store"
-import { useSettingsStore } from "@/stores/settings-store"
+import { selectDiagramDark, useSettingsStore } from "@/stores/settings-store"
 
 /** Size of the canvas area, for overlays that stay inside it */
 export interface CanvasSize {
@@ -64,8 +66,10 @@ export function CanvasStage({
         onDrawioLoad,
         resetDrawioReady,
         isDrawioReady,
+        prepareForReload,
     } = useDiagram()
-    const isDark = useSettingsStore((s) => s.isDark)
+    const hydrated = useSettingsStore((s) => s.hydrated)
+    const diagramDark = useSettingsStore(selectDiagramDark)
     const hasEditor = useCanvasStore((s) => s.hasEditor)
     // Canvas width when the chat panel starts sliding in or out
     const slideStartWidthRef = useRef(0)
@@ -73,10 +77,14 @@ export function CanvasStage({
     const [src, setSrc] = useState<string | null>(null)
     // null until draw.io tells us whether we can drive it directly
     const [editorAccess, setEditorAccess] = useState<boolean | null>(null)
+    const [themeReloadPending, setThemeReloadPending] = useState(false)
+    const [themeReloadError, setThemeReloadError] = useState(false)
+    const [themeRetry, setThemeRetry] = useState(0)
     const stageRef = useRef<HTMLDivElement>(null)
     const [size, setSize] = useState<CanvasSize>({ width: 0, height: 0 })
 
     useEffect(() => {
+        if (!hydrated) return
         // Load draw.io once, in the language the page will have
         if (waitForSavedLocale) {
             const saved = localStorage.getItem(STORAGE_KEYS.locale)
@@ -88,11 +96,9 @@ export function CanvasStage({
                 return
             }
         }
-        // The theme class is set before the page renders; the settings store
-        // may not have read it yet
-        const dark = document.documentElement.classList.contains("dark")
+        const dark = selectDiagramDark(useSettingsStore.getState())
         setSrc(getDrawioSrc(drawioSource ?? webDrawioSource(lang), dark))
-    }, [lang])
+    }, [hydrated, lang, drawioSource, waitForSavedLocale])
 
     // A new iframe starts over: draw.io reports load and access again
     useEffect(() => {
@@ -104,11 +110,44 @@ export function CanvasStage({
     // it when that is not the theme now (also one switched while it
     // loaded). Same-origin switches it in place.
     useEffect(() => {
-        if (editorAccess !== false || !src) return
+        setThemeReloadError(false)
+        setThemeReloadPending(false)
+        if (editorAccess !== false || !src || !isDrawioReady) return
         const startedDark = new URL(src).searchParams.get("dark") === "1"
-        if (startedDark === isDark) return
-        setSrc(getDrawioSrc(drawioSource ?? webDrawioSource(lang), isDark))
-    }, [isDark, editorAccess, lang, src])
+        if (startedDark === diagramDark) return
+        let cancelled = false
+        setThemeReloadPending(true)
+        prepareForReload()
+            .then(() => {
+                if (cancelled) return
+                setSrc(
+                    getDrawioSrc(
+                        drawioSource ?? webDrawioSource(lang),
+                        diagramDark,
+                    ),
+                )
+            })
+            .catch((error: unknown) => {
+                if (cancelled) return
+                console.error("Failed to switch diagram appearance:", error)
+                setThemeReloadError(true)
+            })
+            .finally(() => {
+                if (!cancelled) setThemeReloadPending(false)
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [
+        diagramDark,
+        editorAccess,
+        lang,
+        src,
+        drawioSource,
+        isDrawioReady,
+        prepareForReload,
+        themeRetry,
+    ])
 
     useEffect(() => {
         const stage = stageRef.current
@@ -133,14 +172,23 @@ export function CanvasStage({
         }
     }, [])
 
-    const showOverlays = hasEditor && isDrawioReady && !hideOverlays
+    const showOverlays =
+        hasEditor && isDrawioReady && !hideOverlays && !themeReloadPending
 
     return (
         <div
             ref={stageRef}
             className={cn("absolute overflow-hidden bg-canvas", className)}
-            style={style}
+            style={{
+                ...style,
+                backgroundColor: hydrated
+                    ? diagramDark
+                        ? "var(--canvas-dark)"
+                        : "var(--canvas-light)"
+                    : undefined,
+            }}
             data-testid="canvas-stage"
+            data-diagram-theme={diagramDark ? "dark" : "light"}
             // The chat panel slides in or out (the canvas's right edge moves):
             // once the canvas has its final size, fit a diagram just drawn,
             // or keep the view's middle
@@ -162,7 +210,7 @@ export function CanvasStage({
                     ref={drawioRef}
                     src={src}
                     css={DRAWIO_CSS}
-                    dark={isDark}
+                    dark={diagramDark}
                     onLoad={onDrawioLoad}
                     onAutoSave={handleDiagramAutoSave}
                     onExport={handleDiagramExport}
@@ -171,9 +219,11 @@ export function CanvasStage({
             )}
 
             {/* Covers the iframe until draw.io has loaded and been styled */}
-            {(!isDrawioReady || editorAccess === null) && (
+            {(!isDrawioReady ||
+                editorAccess === null ||
+                themeReloadPending) && (
                 <div
-                    className="absolute inset-0 flex items-center justify-center bg-canvas"
+                    className="absolute inset-0 flex items-center justify-center bg-inherit"
                     data-testid="canvas-loading"
                 >
                     <div className="flex items-center gap-2.5 text-[13px] text-muted-foreground">
@@ -185,6 +235,26 @@ export function CanvasStage({
 
             {showOverlays && overlay?.(size)}
             {showOverlays && <OutlineOffer />}
+            {!hideOverlays && (
+                <div className="absolute right-3 bottom-12 z-10">
+                    <DiagramAppearanceControl compact />
+                </div>
+            )}
+            {themeReloadError && (
+                <div
+                    role="alert"
+                    className="absolute right-3 bottom-24 left-3 z-10 mx-auto flex max-w-md items-center gap-3 rounded-lg border border-border bg-card p-3 text-xs text-foreground shadow-float"
+                >
+                    <span>{dict.settings.diagramThemeFailed}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setThemeRetry((value) => value + 1)}
+                    >
+                        {dict.chat.retry}
+                    </Button>
+                </div>
+            )}
         </div>
     )
 }

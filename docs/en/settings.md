@@ -7,10 +7,15 @@ Open Settings from the chat panel. It has four tabs: General, Drawing, Models an
 | Setting | What it does |
 |---|---|
 | Language | The interface language: English, Simplified Chinese, Traditional Chinese or Japanese |
-| Theme | Light, dark, or the system's setting. The canvas follows the same theme |
+| Theme | Light, dark, or the system's setting for the app interface |
+| Diagram appearance | Follow app (default), Light, or Dark for the embedded editor's toolbar and sheet, independently of the app theme |
 | Send shortcut | Enter or Cmd/Ctrl+Enter sends. Shift+Enter always adds a new line, and Cmd/Ctrl+Enter always sends |
 | Access code | Shown when the site needs one; the site's owner gives it to you |
 | Proxy settings | Desktop app only: an HTTP or HTTPS proxy for the requests to AI providers |
+
+The labeled **Diagram** control on the canvas changes the same Diagram appearance preference as General settings. For a dark app with a light diagram editor, keep Theme set to Dark (or System) and choose Light for Diagram appearance. The preference is saved locally on this device and survives restarts. It does not rewrite diagram XML, saved shape colors, icons, or AI instructions.
+
+The bundled editor switches appearance in place, keeping edits, selection, zoom, and undo history. An external cross-origin editor must reload: the app captures its latest full document first and restores it through the normal load lifecycle. Its selection, zoom, and undo history may reset. If capture fails, the current editor stays open and an error is shown rather than risking unsaved edits.
 
 ## Drawing
 

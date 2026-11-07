@@ -1,4 +1,7 @@
-import { useSettingsStore } from "@/stores/settings-store"
+import {
+    readDiagramAppearance,
+    useSettingsStore,
+} from "@/stores/settings-store"
 import type { ShellConfig } from "./runtime-config"
 
 /**
@@ -44,6 +47,7 @@ function apply(isDark: boolean) {
  * nothing else decides */
 export function initTheme(drawioDark: ShellConfig["drawioDark"]) {
     const query = window.matchMedia("(prefers-color-scheme: dark)")
+    useSettingsStore.setState({ diagramAppearance: readDiagramAppearance() })
     apply(isDarkPreferred(read(), drawioDark, query.matches))
     query.addEventListener("change", (event) => {
         apply(isDarkPreferred(read(), drawioDark, event.matches))

@@ -21,6 +21,8 @@ export interface DrawioExportEvent {
 
 export interface DrawioFrameHandle {
     load: (data: { xml: string }) => void
+    /** Commit an active label edit before a cross-origin reload. */
+    finishEditing?: () => void
     exportDiagram: (data: {
         format: string
         message?: string
@@ -86,6 +88,7 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
 
         useImperativeHandle(ref, () => ({
             load: ({ xml }) => send("load", { xml, autosave: 1 }),
+            finishEditing: () => send("resetEditor"),
             exportDiagram: (data) => send("export", data),
         }))
 
@@ -131,6 +134,8 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
             if (!iframe) return
             editorUiRef.current = null
             attachedRef.current = false
+            let disposed = false
+            let attachTimer: ReturnType<typeof setTimeout> | undefined
             let reported: boolean | null = null
             const report = (value: boolean) => {
                 if (reported === value) return
@@ -159,10 +164,11 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
                     clearInterval(poll)
                     // Called on every action state update: once per editor
                     const ok = watchForEditorUi(frameWindow, (ui) => {
+                        if (disposed) return
                         if (editorUiRef.current === ui) return
                         editorUiRef.current = ui
                         // draw.io follows the system's theme on its own:
-                        // keep the app's
+                        // keep the requested diagram appearance
                         ui.addListener?.("darkModeChanged", () =>
                             applyDarkMode(),
                         )
@@ -201,6 +207,7 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
                         break
                     case "load": {
                         const tryAttach = () => {
+                            if (disposed) return false
                             const ui = editorUiRef.current
                             if (!ui || !iframe.contentWindow) return false
                             attachEditor(ui, iframe.contentWindow)
@@ -214,7 +221,8 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
                         // first load; give it a moment, then fall back to
                         // draw.io's own toolbar
                         if (!tryAttach()) {
-                            setTimeout(() => {
+                            attachTimer = setTimeout(() => {
+                                if (disposed) return
                                 if (!tryAttach()) report(false)
                             }, 800)
                         }
@@ -232,7 +240,9 @@ export const DrawioFrame = forwardRef<DrawioFrameHandle, DrawioFrameProps>(
 
             window.addEventListener("message", handleMessage)
             return () => {
+                disposed = true
                 clearInterval(poll)
+                clearTimeout(attachTimer)
                 window.removeEventListener("message", handleMessage)
                 detachEditor()
             }
